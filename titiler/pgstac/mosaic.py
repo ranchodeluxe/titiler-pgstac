@@ -1,6 +1,7 @@
 """TiTiler.PgSTAC custom Mosaic Backend and Custom STACReader."""
 
 import json
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import attr
@@ -89,9 +90,9 @@ class CustomSTACReader(MultiBaseReader):
             raise InvalidAssetName(f"{asset} is not valid")
 
         env = {
-            "aws_access_key_id": get_gdal_config("aws_access_key_id", normalize=False),
-            "aws_secret_access_key": get_gdal_config("aws_secret_access_key", normalize=False),
-            "aws_session_token": get_gdal_config("aws_session_token", normalize=False),
+            "aws_access_key_id": os.environ.get("aws_access_key_id")
+            "aws_secret_access_key": os.environ.get("aws_secret_access_key")
+            "aws_session_token": os.environ.get("aws_session_token")
         }
         print(f"[ ########################## ENV ################### ]: {env}")
         info = AssetInfo(url=self.input["assets"][asset]["href"], env=env)
