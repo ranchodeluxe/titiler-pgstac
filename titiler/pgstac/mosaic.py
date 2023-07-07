@@ -87,7 +87,8 @@ class CustomSTACReader(MultiBaseReader):
         if asset not in self.assets:
             raise InvalidAssetName(f"{asset} is not valid")
 
-        info = AssetInfo(url=self.input["assets"][asset]["href"])
+
+        info = AssetInfo(url=self.input["assets"][asset]["href"], env=rasterio.env.local._discovered_options)
         if "file:header_size" in self.input["assets"][asset]:
             info["env"] = {
                 "GDAL_INGESTED_BYTES_AT_OPEN": self.input["assets"][asset][
