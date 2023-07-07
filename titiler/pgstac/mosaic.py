@@ -18,6 +18,7 @@ from psycopg import errors as pgErrors
 from psycopg_pool import ConnectionPool
 from rasterio.crs import CRS
 from rasterio.warp import transform_geom
+from rasterio._env import get_gdal_config
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.errors import InvalidAssetName, PointOutsideBounds
 from rio_tiler.io import Reader
@@ -87,8 +88,13 @@ class CustomSTACReader(MultiBaseReader):
         if asset not in self.assets:
             raise InvalidAssetName(f"{asset} is not valid")
 
-
-        info = AssetInfo(url=self.input["assets"][asset]["href"], env=rasterio.env.local._discovered_options)
+        env = {
+            "aws_access_key_id": get_gdal_config("aws_access_key_id", normalize=False),
+            "aws_secret_access_key": get_gdal_config("aws_secret_access_key", normalize=False),
+            "aws_session_token": get_gdal_config("aws_session_token", normalize=False),
+        }
+        print(f"[ ########################## ENV ################### ]: {env}")
+        info = AssetInfo(url=self.input["assets"][asset]["href"], env=env)
         if "file:header_size" in self.input["assets"][asset]:
             info["env"] = {
                 "GDAL_INGESTED_BYTES_AT_OPEN": self.input["assets"][asset][
