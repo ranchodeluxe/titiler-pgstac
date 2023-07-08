@@ -210,10 +210,15 @@ class MosaicTilerFactory(BaseTilerFactory):
             threads = int(os.getenv("MOSAIC_CONCURRENCY", MAX_THREADS))
             with Timer() as t:
                 with rasterio.Env(**env):
+                    # rasterio.Env uses thread local so a new context is set per thread
+                    # for multi-threaded readers we need pass though rio env vars
+                    # to return from AssetInfo
+                    reader_options={**reader_params}
+                    reader_options.update(**env)
                     with self.reader(
                         searchid,
                         tms=tms,
-                        reader_options={**reader_params},
+                        reader_options=reader_options,
                         **backend_params,
                     ) as src_dst:
                         mosaic_read = t.from_start

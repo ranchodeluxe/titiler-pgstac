@@ -1,6 +1,7 @@
 """TiTiler.PgSTAC custom Mosaic Backend and Custom STACReader."""
 
 import json
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import attr
@@ -18,6 +19,7 @@ from psycopg import errors as pgErrors
 from psycopg_pool import ConnectionPool
 from rasterio.crs import CRS
 from rasterio.warp import transform_geom
+from rasterio._env import get_gdal_config
 from rio_tiler.constants import WEB_MERCATOR_TMS, WGS84_CRS
 from rio_tiler.errors import InvalidAssetName, PointOutsideBounds
 from rio_tiler.io import Reader
@@ -65,6 +67,7 @@ class CustomSTACReader(MultiBaseReader):
         self.bounds = self.input["bbox"]
         self.crs = WGS84_CRS  # Per specification STAC items are in WGS84
         self.assets = list(self.input["assets"])
+        self.rio_aws_session = self.reader_options.pop("session", None)
 
     @minzoom.default
     def _minzoom(self):
@@ -87,7 +90,10 @@ class CustomSTACReader(MultiBaseReader):
         if asset not in self.assets:
             raise InvalidAssetName(f"{asset} is not valid")
 
-        info = AssetInfo(url=self.input["assets"][asset]["href"])
+        info = AssetInfo(
+            url=self.input["assets"][asset]["href"],
+            env={"session": self.rio_aws_session}
+        )
         if "file:header_size" in self.input["assets"][asset]:
             info["env"] = {
                 "GDAL_INGESTED_BYTES_AT_OPEN": self.input["assets"][asset][
@@ -279,9 +285,12 @@ class PGSTACBackend(BaseBackend):
         def _reader(
             item: Dict[str, Any], x: int, y: int, z: int, **kwargs: Any
         ) -> ImageData:
-            with self.reader(item, tms=self.tms, **self.reader_options) as src_dst:
+            # pass through rio_env with reader_options
+            reader_options = {
+                'session': self.reader_options.pop('session', None)
+            }
+            with self.reader(item, tms=self.tms, reader_options=reader_options, **self.reader_options) as src_dst:
                 return src_dst.tile(x, y, z, **kwargs)
-
         return mosaic_reader(mosaic_assets, _reader, tile_x, tile_y, tile_z, **kwargs)
 
     def point(
